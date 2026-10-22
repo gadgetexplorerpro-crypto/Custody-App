@@ -1,0 +1,519 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidMemberList(arr) {
+      return arr is list && arr.size() >= 1 && arr.size() <= 2 && arr[0] is string && arr[0].size() >= 1 && arr[0].size() <= 128;
+    }
+
+    // 1. UserProfile validation
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+             data.email is string && data.email.size() >= 1 && data.email.size() <= 150 &&
+             data.familyId is string && data.familyId.size() >= 1 && data.familyId.size() <= 128 &&
+             (!('coParentUid' in data) || data.coParentUid == null || (data.coParentUid is string && data.coParentUid.size() <= 128)) &&
+             (!('coParentName' in data) || data.coParentName == null || (data.coParentName is string && data.coParentName.size() <= 100)) &&
+             data.subscriptionTier is string && data.subscriptionTier in ['FREE', 'PREMIUM', 'FAMILY_PREMIUM'] &&
+             data.custodyPattern is string && data.custodyPattern in ['TWO_TWO_THREE', 'TWO_TWO_FIVE_FIVE', 'ALTERNATING_WEEKENDS', 'CUSTOM'] &&
+             data.defaultExpenseSplitPercent is int && data.defaultExpenseSplitPercent >= 0 && data.defaultExpenseSplitPercent <= 100 &&
+             data.privacyRetentionDays is int && data.privacyRetentionDays >= 30 && data.privacyRetentionDays <= 3650 &&
+             data.notificationsEnabled is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if isSignedIn() && request.auth.uid == userId;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'userId', 'displayName', 'email', 'familyId', 'subscriptionTier',
+                         'custodyPattern', 'defaultExpenseSplitPercent', 'privacyRetentionDays',
+                         'notificationsEnabled', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'displayName', 'email', 'familyId', 'coParentUid', 'coParentName',
+                         'subscriptionTier', 'custodyPattern', 'defaultExpenseSplitPercent',
+                         'privacyRetentionDays', 'notificationsEnabled', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'displayName', 'familyId', 'coParentUid', 'coParentName',
+                         'subscriptionTier', 'custodyPattern', 'defaultExpenseSplitPercent',
+                         'privacyRetentionDays', 'notificationsEnabled', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+    }
+
+    // 2. CoParentInvitation validation
+    function isValidCoParentInvitation(data) {
+      return data.inviteCode is string && data.inviteCode.size() >= 4 && data.inviteCode.size() <= 64 &&
+             data.inviterUid is string && data.inviterUid.size() >= 1 && data.inviterUid.size() <= 128 &&
+             data.inviterName is string && data.inviterName.size() >= 1 && data.inviterName.size() <= 100 &&
+             data.familyId is string && data.familyId.size() >= 1 && data.familyId.size() <= 128 &&
+             data.status is string && data.status in ['PENDING', 'ACCEPTED', 'REVOKED'] &&
+             (!('acceptedByUid' in data) || data.acceptedByUid == null || (data.acceptedByUid is string && data.acceptedByUid.size() <= 128)) &&
+             (!('acceptedByName' in data) || data.acceptedByName == null || (data.acceptedByName is string && data.acceptedByName.size() <= 100)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /invitations/{inviteCode} {
+      allow get: if isSignedIn() && isValidId(inviteCode);
+      allow list: if isSignedIn() && existing().inviterUid == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(inviteCode) &&
+                       incoming().inviteCode == inviteCode &&
+                       incoming().inviterUid == request.auth.uid &&
+                       incoming().status == 'PENDING' &&
+                       incoming().keys().hasAll([
+                         'inviteCode', 'inviterUid', 'inviterName', 'familyId', 'status', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'inviteCode', 'inviterUid', 'inviterName', 'familyId', 'status',
+                         'acceptedByUid', 'acceptedByName', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidCoParentInvitation(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(inviteCode) &&
+                       isValidCoParentInvitation(incoming()) &&
+                       incoming().inviteCode == existing().inviteCode &&
+                       incoming().inviterUid == existing().inviterUid &&
+                       incoming().familyId == existing().familyId &&
+                       incoming().createdAt == existing().createdAt &&
+                       existing().status == 'PENDING' && (
+                         // Action 1: Co-parent accepts invitation
+                         (incoming().status == 'ACCEPTED' &&
+                          incoming().acceptedByUid == request.auth.uid &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'acceptedByUid', 'acceptedByName', 'updatedAt'])) ||
+                         // Action 2: Inviter revokes invitation
+                         (request.auth.uid == existing().inviterUid &&
+                          incoming().status == 'REVOKED' &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+                       );
+
+      allow delete: if isSignedIn() && isValidId(inviteCode) && existing().inviterUid == request.auth.uid;
+    }
+
+    // 3. ChildProfile validation
+    function isValidChildProfile(data) {
+      return data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128 &&
+             data.familyId is string && data.familyId.size() >= 1 && data.familyId.size() <= 128 &&
+             isValidMemberList(data.memberUids) &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.dateOfBirth is string && data.dateOfBirth.size() >= 1 && data.dateOfBirth.size() <= 30 &&
+             data.schoolOrChildcare is string && data.schoolOrChildcare.size() <= 150 &&
+             data.medicalNotes is string && data.medicalNotes.size() <= 500 &&
+             data.custodyScheduleType is string && data.custodyScheduleType in ['TWO_TWO_THREE', 'TWO_TWO_FIVE_FIVE', 'ALTERNATING_WEEKENDS', 'CUSTOM'] &&
+             data.primaryParentRatio is int && data.primaryParentRatio >= 0 && data.primaryParentRatio <= 100 &&
+             data.avatarColorHex is string && data.avatarColorHex.size() >= 1 && data.avatarColorHex.size() <= 20 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /children/{childId} {
+      allow get: if isSignedIn() && isValidId(childId) && request.auth.uid in existing().memberUids;
+      allow list: if isSignedIn() && request.auth.uid in existing().memberUids;
+
+      allow create: if isSignedIn() &&
+                       isValidId(childId) &&
+                       incoming().createdByUid == request.auth.uid &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().keys().hasAll([
+                         'createdByUid', 'familyId', 'memberUids', 'name', 'dateOfBirth',
+                         'schoolOrChildcare', 'medicalNotes', 'custodyScheduleType',
+                         'primaryParentRatio', 'avatarColorHex', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'createdByUid', 'familyId', 'memberUids', 'name', 'dateOfBirth',
+                         'schoolOrChildcare', 'medicalNotes', 'custodyScheduleType',
+                         'primaryParentRatio', 'avatarColorHex', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidChildProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(childId) &&
+                       isValidChildProfile(incoming()) &&
+                       request.auth.uid in existing().memberUids &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().createdByUid == existing().createdByUid &&
+                       incoming().familyId == existing().familyId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'memberUids', 'name', 'dateOfBirth', 'schoolOrChildcare',
+                         'medicalNotes', 'custodyScheduleType', 'primaryParentRatio',
+                         'avatarColorHex', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(childId) && existing().createdByUid == request.auth.uid;
+    }
+
+    // 4. CustodyScheduleEvent validation
+    function isValidCustodyScheduleEvent(data) {
+      return data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128 &&
+             data.familyId is string && data.familyId.size() >= 1 && data.familyId.size() <= 128 &&
+             isValidMemberList(data.memberUids) &&
+             data.childName is string && data.childName.size() >= 1 && data.childName.size() <= 100 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.eventType is string && data.eventType in ['CUSTODY_TIME', 'HOLIDAY', 'VACATION', 'SCHOOL_EVENT', 'MEDICAL_APPOINTMENT', 'CHANGE_REQUEST'] &&
+             data.assignedParent is string && data.assignedParent in ['PRIMARY', 'CO_PARENT', 'SHARED'] &&
+             data.dateIso is string && data.dateIso.size() >= 8 && data.dateIso.size() <= 30 &&
+             data.startTime is string && data.startTime.size() >= 1 && data.startTime.size() <= 20 &&
+             data.endTime is string && data.endTime.size() >= 1 && data.endTime.size() <= 20 &&
+             data.location is string && data.location.size() <= 200 &&
+             data.notes is string && data.notes.size() <= 1000 &&
+             data.verificationStatus is string && data.verificationStatus in ['SCHEDULED', 'PROPOSED_CHANGE', 'MUTUALLY_CONFIRMED', 'DECLINED'] &&
+             (!('confirmedByUid' in data) || data.confirmedByUid == null || (data.confirmedByUid is string && data.confirmedByUid.size() <= 128)) &&
+             data.changeHistorySummary is string && data.changeHistorySummary.size() <= 1000 &&
+             data.reminderMinutesBefore is int && data.reminderMinutesBefore >= 0 && data.reminderMinutesBefore <= 10080 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /schedule_events/{eventId} {
+      allow get: if isSignedIn() && isValidId(eventId) && request.auth.uid in existing().memberUids;
+      allow list: if isSignedIn() && request.auth.uid in existing().memberUids;
+
+      allow create: if isSignedIn() &&
+                       isValidId(eventId) &&
+                       incoming().createdByUid == request.auth.uid &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().keys().hasAll([
+                         'createdByUid', 'familyId', 'memberUids', 'childName', 'title',
+                         'eventType', 'assignedParent', 'dateIso', 'startTime', 'endTime',
+                         'location', 'notes', 'verificationStatus', 'changeHistorySummary',
+                         'reminderMinutesBefore', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'createdByUid', 'familyId', 'memberUids', 'childName', 'title',
+                         'eventType', 'assignedParent', 'dateIso', 'startTime', 'endTime',
+                         'location', 'notes', 'verificationStatus', 'confirmedByUid',
+                         'changeHistorySummary', 'reminderMinutesBefore', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidCustodyScheduleEvent(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(eventId) &&
+                       isValidCustodyScheduleEvent(incoming()) &&
+                       request.auth.uid in existing().memberUids &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().createdByUid == existing().createdByUid &&
+                       incoming().familyId == existing().familyId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'memberUids', 'childName', 'title', 'eventType', 'assignedParent',
+                         'dateIso', 'startTime', 'endTime', 'location', 'notes',
+                         'verificationStatus', 'confirmedByUid', 'changeHistorySummary',
+                         'reminderMinutesBefore', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(eventId) && existing().createdByUid == request.auth.uid;
+    }
+
+    // 5. CustodyExchangeRecord validation
+    function isValidCustodyExchangeRecord(data) {
+      return data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128 &&
+             data.createdByName is string && data.createdByName.size() >= 1 && data.createdByName.size() <= 100 &&
+             data.familyId is string && data.familyId.size() >= 1 && data.familyId.size() <= 128 &&
+             isValidMemberList(data.memberUids) &&
+             data.childName is string && data.childName.size() >= 1 && data.childName.size() <= 100 &&
+             data.scheduledDateIso is string && data.scheduledDateIso.size() >= 8 && data.scheduledDateIso.size() <= 30 &&
+             data.scheduledTime is string && data.scheduledTime.size() >= 1 && data.scheduledTime.size() <= 20 &&
+             data.actualArrivalTime is string && data.actualArrivalTime.size() <= 20 &&
+             data.latenessMinutes is int && data.latenessMinutes >= 0 && data.latenessMinutes <= 10080 &&
+             data.location is string && data.location.size() >= 1 && data.location.size() <= 200 &&
+             data.direction is string && data.direction in ['PICK_UP', 'DROP_OFF'] &&
+             data.exchangeStatus is string && data.exchangeStatus in ['COMPLETED_ON_TIME', 'LATE', 'MISSED', 'DISPUTED'] &&
+             data.verificationStatus is string && data.verificationStatus in ['USER_REPORTED', 'MUTUALLY_CONFIRMED', 'DISPUTED'] &&
+             data.notes is string && data.notes.size() <= 1000 &&
+             data.attachmentName is string && data.attachmentName.size() <= 200 &&
+             data.attachmentUri is string && data.attachmentUri.size() <= 500 &&
+             data.disputeReason is string && data.disputeReason.size() <= 1000 &&
+             isValidMemberList(data.confirmedByUids) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /exchanges/{exchangeId} {
+      allow get: if isSignedIn() && isValidId(exchangeId) && request.auth.uid in existing().memberUids;
+      allow list: if isSignedIn() && request.auth.uid in existing().memberUids;
+
+      allow create: if isSignedIn() &&
+                       isValidId(exchangeId) &&
+                       incoming().createdByUid == request.auth.uid &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().keys().hasAll([
+                         'createdByUid', 'createdByName', 'familyId', 'memberUids', 'childName',
+                         'scheduledDateIso', 'scheduledTime', 'actualArrivalTime', 'latenessMinutes',
+                         'location', 'direction', 'exchangeStatus', 'verificationStatus', 'notes',
+                         'attachmentName', 'attachmentUri', 'disputeReason', 'confirmedByUids',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'createdByUid', 'createdByName', 'familyId', 'memberUids', 'childName',
+                         'scheduledDateIso', 'scheduledTime', 'actualArrivalTime', 'latenessMinutes',
+                         'location', 'direction', 'exchangeStatus', 'verificationStatus', 'notes',
+                         'attachmentName', 'attachmentUri', 'disputeReason', 'confirmedByUids',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidCustodyExchangeRecord(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(exchangeId) &&
+                       isValidCustodyExchangeRecord(incoming()) &&
+                       request.auth.uid in existing().memberUids &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().createdByUid == existing().createdByUid &&
+                       incoming().familyId == existing().familyId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'memberUids', 'actualArrivalTime', 'latenessMinutes', 'exchangeStatus',
+                         'verificationStatus', 'notes', 'attachmentName', 'attachmentUri',
+                         'disputeReason', 'confirmedByUids', 'updatedAt'
+                       ]);
+
+      allow delete: if false; // Exchange logs are tamper-evident and cannot be hard-deleted
+    }
+
+    // 6. IncidentRecord validation
+    function isValidIncidentRecord(data) {
+      return data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128 &&
+             data.createdByName is string && data.createdByName.size() >= 1 && data.createdByName.size() <= 100 &&
+             data.familyId is string && data.familyId.size() >= 1 && data.familyId.size() <= 128 &&
+             isValidMemberList(data.memberUids) &&
+             data.childName is string && data.childName.size() >= 1 && data.childName.size() <= 100 &&
+             data.category is string && data.category in [
+               'MISSED_EXCHANGE', 'LATE_PICKUP', 'MISSED_PARENTING_TIME', 'CANCELED_VISIT',
+               'COMMUNICATION_DISAGREEMENT', 'EXPENSE_DISPUTE', 'OTHER'
+             ] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.description is string && data.description.size() >= 1 && data.description.size() <= 2000 &&
+             data.incidentDateIso is string && data.incidentDateIso.size() >= 8 && data.incidentDateIso.size() <= 30 &&
+             data.incidentTime is string && data.incidentTime.size() >= 1 && data.incidentTime.size() <= 20 &&
+             data.attachmentType is string && data.attachmentType in ['NONE', 'PHOTO', 'PDF_DOCUMENT', 'SCREENSHOT'] &&
+             data.attachmentName is string && data.attachmentName.size() <= 200 &&
+             data.attachmentUri is string && data.attachmentUri.size() <= 500 &&
+             data.originalFileHash is string && data.originalFileHash.size() <= 128 &&
+             data.verificationStatus is string && data.verificationStatus in ['USER_REPORTED', 'MUTUALLY_CONFIRMED', 'DISPUTED'] &&
+             data.disputeResponse is string && data.disputeResponse.size() <= 1000 &&
+             data.version is int && data.version >= 1 && data.version <= 1000 &&
+             data.auditHistorySummary is string && data.auditHistorySummary.size() >= 1 && data.auditHistorySummary.size() <= 2000 &&
+             data.isArchived is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /incidents/{incidentId} {
+      allow get: if isSignedIn() && isValidId(incidentId) && request.auth.uid in existing().memberUids;
+      allow list: if isSignedIn() && request.auth.uid in existing().memberUids;
+
+      allow create: if isSignedIn() &&
+                       isValidId(incidentId) &&
+                       incoming().createdByUid == request.auth.uid &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().version == 1 &&
+                       incoming().keys().hasAll([
+                         'createdByUid', 'createdByName', 'familyId', 'memberUids', 'childName',
+                         'category', 'title', 'description', 'incidentDateIso', 'incidentTime',
+                         'attachmentType', 'attachmentName', 'attachmentUri', 'originalFileHash',
+                         'verificationStatus', 'disputeResponse', 'version', 'auditHistorySummary',
+                         'isArchived', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'createdByUid', 'createdByName', 'familyId', 'memberUids', 'childName',
+                         'category', 'title', 'description', 'incidentDateIso', 'incidentTime',
+                         'attachmentType', 'attachmentName', 'attachmentUri', 'originalFileHash',
+                         'verificationStatus', 'disputeResponse', 'version', 'auditHistorySummary',
+                         'isArchived', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidIncidentRecord(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(incidentId) &&
+                       isValidIncidentRecord(incoming()) &&
+                       request.auth.uid in existing().memberUids &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().createdByUid == existing().createdByUid &&
+                       incoming().familyId == existing().familyId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().originalFileHash == existing().originalFileHash &&
+                       incoming().version >= existing().version &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'memberUids', 'title', 'description', 'attachmentType', 'attachmentName',
+                         'attachmentUri', 'verificationStatus', 'disputeResponse', 'version',
+                         'auditHistorySummary', 'isArchived', 'updatedAt'
+                       ]);
+
+      allow delete: if false; // Incident records preserve audit history; use isArchived instead
+    }
+
+    // 7. SharedExpense validation
+    function isValidSharedExpense(data) {
+      return data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128 &&
+             data.createdByName is string && data.createdByName.size() >= 1 && data.createdByName.size() <= 100 &&
+             data.familyId is string && data.familyId.size() >= 1 && data.familyId.size() <= 128 &&
+             isValidMemberList(data.memberUids) &&
+             data.childName is string && data.childName.size() >= 1 && data.childName.size() <= 100 &&
+             data.category is string && data.category in [
+               'SCHOOL_FEES', 'MEDICAL_BILLS', 'CHILDCARE', 'CLOTHING',
+               'FOOD', 'ACTIVITIES', 'TRANSPORTATION', 'OTHER'
+             ] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.totalAmountCents is int && data.totalAmountCents > 0 && data.totalAmountCents <= 100000000 &&
+             data.currency is string && data.currency in ['USD', 'GBP'] &&
+             data.creatorSharePercent is int && data.creatorSharePercent >= 0 && data.creatorSharePercent <= 100 &&
+             data.coParentShareCents is int && data.coParentShareCents >= 0 && data.coParentShareCents <= 100000000 &&
+             data.dateIso is string && data.dateIso.size() >= 8 && data.dateIso.size() <= 30 &&
+             data.receiptName is string && data.receiptName.size() <= 200 &&
+             data.receiptUri is string && data.receiptUri.size() <= 500 &&
+             data.paymentStatus is string && data.paymentStatus in ['UNPAID_REQUESTED', 'PAID', 'DISPUTED'] &&
+             data.statusNote is string && data.statusNote.size() <= 500 &&
+             data.paidAtIso is string && data.paidAtIso.size() <= 40 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /expenses/{expenseId} {
+      allow get: if isSignedIn() && isValidId(expenseId) && request.auth.uid in existing().memberUids;
+      allow list: if isSignedIn() && request.auth.uid in existing().memberUids;
+
+      allow create: if isSignedIn() &&
+                       isValidId(expenseId) &&
+                       incoming().createdByUid == request.auth.uid &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().keys().hasAll([
+                         'createdByUid', 'createdByName', 'familyId', 'memberUids', 'childName',
+                         'category', 'title', 'totalAmountCents', 'currency', 'creatorSharePercent',
+                         'coParentShareCents', 'dateIso', 'receiptName', 'receiptUri',
+                         'paymentStatus', 'statusNote', 'paidAtIso', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'createdByUid', 'createdByName', 'familyId', 'memberUids', 'childName',
+                         'category', 'title', 'totalAmountCents', 'currency', 'creatorSharePercent',
+                         'coParentShareCents', 'dateIso', 'receiptName', 'receiptUri',
+                         'paymentStatus', 'statusNote', 'paidAtIso', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidSharedExpense(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(expenseId) &&
+                       isValidSharedExpense(incoming()) &&
+                       request.auth.uid in existing().memberUids &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().createdByUid == existing().createdByUid &&
+                       incoming().familyId == existing().familyId &&
+                       incoming().totalAmountCents == existing().totalAmountCents &&
+                       incoming().currency == existing().currency &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'memberUids', 'paymentStatus', 'statusNote', 'paidAtIso',
+                         'receiptName', 'receiptUri', 'updatedAt'
+                       ]);
+
+      allow delete: if false; // Expense records are preserved for financial statements
+    }
+
+    // 8. CoParentMessage validation
+    function isValidCoParentMessage(data) {
+      return data.senderUid is string && data.senderUid.size() >= 1 && data.senderUid.size() <= 128 &&
+             data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 100 &&
+             data.familyId is string && data.familyId.size() >= 1 && data.familyId.size() <= 128 &&
+             isValidMemberList(data.memberUids) &&
+             data.body is string && data.body.size() >= 1 && data.body.size() <= 2000 &&
+             data.originalBody is string && data.originalBody.size() >= 1 && data.originalBody.size() <= 2000 &&
+             data.attachmentName is string && data.attachmentName.size() <= 200 &&
+             data.attachmentUri is string && data.attachmentUri.size() <= 500 &&
+             data.isEdited is bool &&
+             data.isRetracted is bool &&
+             data.auditNote is string && data.auditNote.size() <= 500 &&
+             isValidMemberList(data.readByUids) &&
+             data.toneAssisted is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /messages/{messageId} {
+      allow get: if isSignedIn() && isValidId(messageId) && request.auth.uid in existing().memberUids;
+      allow list: if isSignedIn() && request.auth.uid in existing().memberUids;
+
+      allow create: if isSignedIn() &&
+                       isValidId(messageId) &&
+                       incoming().senderUid == request.auth.uid &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().body == incoming().originalBody &&
+                       incoming().isEdited == false &&
+                       incoming().isRetracted == false &&
+                       incoming().keys().hasAll([
+                         'senderUid', 'senderName', 'familyId', 'memberUids', 'body',
+                         'originalBody', 'attachmentName', 'attachmentUri', 'isEdited',
+                         'isRetracted', 'auditNote', 'readByUids', 'toneAssisted',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'senderUid', 'senderName', 'familyId', 'memberUids', 'body',
+                         'originalBody', 'attachmentName', 'attachmentUri', 'isEdited',
+                         'isRetracted', 'auditNote', 'readByUids', 'toneAssisted',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidCoParentMessage(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(messageId) &&
+                       isValidCoParentMessage(incoming()) &&
+                       request.auth.uid in existing().memberUids &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().senderUid == existing().senderUid &&
+                       incoming().familyId == existing().familyId &&
+                       incoming().originalBody == existing().originalBody &&
+                       incoming().createdAt == existing().createdAt && (
+                         // Action 1: Sender edits or retracts message (preserving originalBody and auditNote)
+                         (request.auth.uid == existing().senderUid &&
+                          incoming().diff(existing()).affectedKeys().hasOnly([
+                            'memberUids', 'body', 'isEdited', 'isRetracted', 'auditNote', 'readByUids', 'updatedAt'
+                          ])) ||
+                         // Action 2: Co-parent marks message as read
+                         (incoming().diff(existing()).affectedKeys().hasOnly([
+                            'memberUids', 'readByUids', 'updatedAt'
+                          ]))
+                       );
+
+      allow delete: if false; // Messages cannot be permanently deleted; retractions leave an audit trail
+    }
+  }
+}

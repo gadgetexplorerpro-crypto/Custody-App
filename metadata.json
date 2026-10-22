@@ -1,0 +1,6 @@
+{
+  "name": "CustodyLog",
+  "description": "Co-parenting and child custody management app for schedules, exchange tracking, incident records, shared expenses, and secure messaging.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

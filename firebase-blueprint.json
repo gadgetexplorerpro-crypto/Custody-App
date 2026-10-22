@@ -1,0 +1,432 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private account profile and preferences for an authenticated parent.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the parent." },
+        "displayName": { "type": "string", "description": "Display name of the parent." },
+        "email": { "type": "string", "description": "Email address of the parent (PII)." },
+        "familyId": { "type": "string", "description": "Shared family workspace identifier." },
+        "coParentUid": { "type": "string", "description": "Connected co-parent UID if linked." },
+        "coParentName": { "type": "string", "description": "Connected co-parent display name." },
+        "subscriptionTier": {
+          "type": "string",
+          "enum": ["FREE", "PREMIUM", "FAMILY_PREMIUM"],
+          "description": "Current subscription entitlement tier."
+        },
+        "custodyPattern": {
+          "type": "string",
+          "enum": ["TWO_TWO_THREE", "TWO_TWO_FIVE_FIVE", "ALTERNATING_WEEKENDS", "CUSTOM"],
+          "description": "Default custody schedule pattern."
+        },
+        "defaultExpenseSplitPercent": { "type": "integer", "description": "Default primary parent expense split percentage (0-100)." },
+        "privacyRetentionDays": { "type": "integer", "description": "Record retention period in days." },
+        "notificationsEnabled": { "type": "boolean", "description": "Whether exchange and message notifications are enabled." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "email",
+        "familyId",
+        "subscriptionTier",
+        "custodyPattern",
+        "defaultExpenseSplitPercent",
+        "privacyRetentionDays",
+        "notificationsEnabled",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CoParentInvitation": {
+      "title": "CoParentInvitation",
+      "description": "Secure invitation token linking two co-parent accounts into a shared family workspace.",
+      "type": "object",
+      "properties": {
+        "inviteCode": { "type": "string", "description": "Unique invitation token matching document ID." },
+        "inviterUid": { "type": "string", "description": "UID of the inviting parent." },
+        "inviterName": { "type": "string", "description": "Display name of the inviting parent." },
+        "familyId": { "type": "string", "description": "Shared family workspace ID." },
+        "status": {
+          "type": "string",
+          "enum": ["PENDING", "ACCEPTED", "REVOKED"],
+          "description": "Current status of the invitation."
+        },
+        "acceptedByUid": { "type": "string", "description": "UID of the accepting co-parent." },
+        "acceptedByName": { "type": "string", "description": "Display name of the accepting co-parent." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." }
+      },
+      "required": ["inviteCode", "inviterUid", "inviterName", "familyId", "status", "createdAt", "updatedAt"]
+    },
+    "ChildProfile": {
+      "title": "ChildProfile",
+      "description": "Child profile shared between connected co-parents.",
+      "type": "object",
+      "properties": {
+        "createdByUid": { "type": "string", "description": "UID of parent who created the child profile." },
+        "familyId": { "type": "string", "description": "Shared family workspace ID." },
+        "memberUids": { "type": "array", "description": "Bounded list (1-2) of authorized parent UIDs." },
+        "name": { "type": "string", "description": "Child's full or first name." },
+        "dateOfBirth": { "type": "string", "description": "ISO date of birth (YYYY-MM-DD)." },
+        "schoolOrChildcare": { "type": "string", "description": "School or childcare facility name." },
+        "medicalNotes": { "type": "string", "description": "Allergies, pediatrician, or medical notes." },
+        "custodyScheduleType": {
+          "type": "string",
+          "enum": ["TWO_TWO_THREE", "TWO_TWO_FIVE_FIVE", "ALTERNATING_WEEKENDS", "CUSTOM"],
+          "description": "Active parenting schedule template."
+        },
+        "primaryParentRatio": { "type": "integer", "description": "Target parenting time percentage (0-100)." },
+        "avatarColorHex": { "type": "string", "description": "Hex color accent for child badge." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." }
+      },
+      "required": [
+        "createdByUid",
+        "familyId",
+        "memberUids",
+        "name",
+        "dateOfBirth",
+        "schoolOrChildcare",
+        "medicalNotes",
+        "custodyScheduleType",
+        "primaryParentRatio",
+        "avatarColorHex",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CustodyScheduleEvent": {
+      "title": "CustodyScheduleEvent",
+      "description": "Custody calendar block, holiday, school event, appointment, or schedule-change request.",
+      "type": "object",
+      "properties": {
+        "createdByUid": { "type": "string", "description": "UID of parent who created the event." },
+        "familyId": { "type": "string", "description": "Shared family workspace ID." },
+        "memberUids": { "type": "array", "description": "Bounded list (1-2) of authorized parent UIDs." },
+        "childName": { "type": "string", "description": "Name of child for this schedule event." },
+        "title": { "type": "string", "description": "Event title." },
+        "eventType": {
+          "type": "string",
+          "enum": ["CUSTODY_TIME", "HOLIDAY", "VACATION", "SCHOOL_EVENT", "MEDICAL_APPOINTMENT", "CHANGE_REQUEST"],
+          "description": "Category of calendar event."
+        },
+        "assignedParent": {
+          "type": "string",
+          "enum": ["PRIMARY", "CO_PARENT", "SHARED"],
+          "description": "Which parent has responsibility during this event."
+        },
+        "dateIso": { "type": "string", "description": "Event date in YYYY-MM-DD format." },
+        "startTime": { "type": "string", "description": "Start time in HH:mm format." },
+        "endTime": { "type": "string", "description": "End time in HH:mm format." },
+        "location": { "type": "string", "description": "Event or exchange location." },
+        "notes": { "type": "string", "description": "Event details or schedule change explanation." },
+        "verificationStatus": {
+          "type": "string",
+          "enum": ["SCHEDULED", "PROPOSED_CHANGE", "MUTUALLY_CONFIRMED", "DECLINED"],
+          "description": "Distinguishes scheduled events, proposed changes, and mutually confirmed events."
+        },
+        "confirmedByUid": { "type": "string", "description": "UID of confirming parent." },
+        "changeHistorySummary": { "type": "string", "description": "Audit log of agreed schedule changes." },
+        "reminderMinutesBefore": { "type": "integer", "description": "Reminder lead time in minutes." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." }
+      },
+      "required": [
+        "createdByUid",
+        "familyId",
+        "memberUids",
+        "childName",
+        "title",
+        "eventType",
+        "assignedParent",
+        "dateIso",
+        "startTime",
+        "endTime",
+        "location",
+        "notes",
+        "verificationStatus",
+        "changeHistorySummary",
+        "reminderMinutesBefore",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CustodyExchangeRecord": {
+      "title": "CustodyExchangeRecord",
+      "description": "Documented child custody exchange with scheduled vs actual arrival timestamps, lateness calculation, and parent confirmation.",
+      "type": "object",
+      "properties": {
+        "createdByUid": { "type": "string", "description": "UID of parent logging the exchange." },
+        "createdByName": { "type": "string", "description": "Display name of parent logging the exchange." },
+        "familyId": { "type": "string", "description": "Shared family workspace ID." },
+        "memberUids": { "type": "array", "description": "Bounded list (1-2) of authorized parent UIDs." },
+        "childName": { "type": "string", "description": "Child involved in the exchange." },
+        "scheduledDateIso": { "type": "string", "description": "Scheduled date (YYYY-MM-DD)." },
+        "scheduledTime": { "type": "string", "description": "Scheduled time (HH:mm)." },
+        "actualArrivalTime": { "type": "string", "description": "Recorded actual arrival time (HH:mm)." },
+        "latenessMinutes": { "type": "integer", "description": "Automatically calculated lateness in minutes." },
+        "location": { "type": "string", "description": "Pickup or drop-off location." },
+        "direction": {
+          "type": "string",
+          "enum": ["PICK_UP", "DROP_OFF"],
+          "description": "Whether this log represents a pickup or drop-off."
+        },
+        "exchangeStatus": {
+          "type": "string",
+          "enum": ["COMPLETED_ON_TIME", "LATE", "MISSED", "DISPUTED"],
+          "description": "Operational outcome of the exchange."
+        },
+        "verificationStatus": {
+          "type": "string",
+          "enum": ["USER_REPORTED", "MUTUALLY_CONFIRMED", "DISPUTED"],
+          "description": "Distinguishes user-reported allegations from mutually confirmed events."
+        },
+        "notes": { "type": "string", "description": "Objective exchange notes." },
+        "attachmentName": { "type": "string", "description": "Supporting photo/document filename." },
+        "attachmentUri": { "type": "string", "description": "Local/secure URI reference for supporting attachment." },
+        "disputeReason": { "type": "string", "description": "Explanation if co-parent disputes the record." },
+        "confirmedByUids": { "type": "array", "description": "Bounded list (1-2) of UIDs that confirmed this exchange." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." }
+      },
+      "required": [
+        "createdByUid",
+        "createdByName",
+        "familyId",
+        "memberUids",
+        "childName",
+        "scheduledDateIso",
+        "scheduledTime",
+        "actualArrivalTime",
+        "latenessMinutes",
+        "location",
+        "direction",
+        "exchangeStatus",
+        "verificationStatus",
+        "notes",
+        "attachmentName",
+        "attachmentUri",
+        "disputeReason",
+        "confirmedByUids",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "IncidentRecord": {
+      "title": "IncidentRecord",
+      "description": "Chronological, neutral incident journal record with audit history and attachment preservation.",
+      "type": "object",
+      "properties": {
+        "createdByUid": { "type": "string", "description": "UID of reporting parent." },
+        "createdByName": { "type": "string", "description": "Display name of reporting parent." },
+        "familyId": { "type": "string", "description": "Shared family workspace ID." },
+        "memberUids": { "type": "array", "description": "Bounded list (1-2) of authorized parent UIDs." },
+        "childName": { "type": "string", "description": "Child involved." },
+        "category": {
+          "type": "string",
+          "enum": [
+            "MISSED_EXCHANGE",
+            "LATE_PICKUP",
+            "MISSED_PARENTING_TIME",
+            "CANCELED_VISIT",
+            "COMMUNICATION_DISAGREEMENT",
+            "EXPENSE_DISPUTE",
+            "OTHER"
+          ],
+          "description": "Incident classification."
+        },
+        "title": { "type": "string", "description": "Factual incident summary title." },
+        "description": { "type": "string", "description": "Neutral chronological description." },
+        "incidentDateIso": { "type": "string", "description": "Date of incident (YYYY-MM-DD)." },
+        "incidentTime": { "type": "string", "description": "Time of incident (HH:mm)." },
+        "attachmentType": {
+          "type": "string",
+          "enum": ["NONE", "PHOTO", "PDF_DOCUMENT", "SCREENSHOT"],
+          "description": "Type of supporting evidence file."
+        },
+        "attachmentName": { "type": "string", "description": "Original uploaded file name." },
+        "attachmentUri": { "type": "string", "description": "Preserved file URI." },
+        "originalFileHash": { "type": "string", "description": "SHA-256 or integrity fingerprint of original attachment." },
+        "verificationStatus": {
+          "type": "string",
+          "enum": ["USER_REPORTED", "MUTUALLY_CONFIRMED", "DISPUTED"],
+          "description": "Verification status of incident."
+        },
+        "disputeResponse": { "type": "string", "description": "Co-parent response or dispute statement." },
+        "version": { "type": "integer", "description": "Revision counter for audit trail." },
+        "auditHistorySummary": { "type": "string", "description": "Immutable append-only summary of edits and status changes." },
+        "isArchived": { "type": "boolean", "description": "Soft-delete flag preserving audit history." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." }
+      },
+      "required": [
+        "createdByUid",
+        "createdByName",
+        "familyId",
+        "memberUids",
+        "childName",
+        "category",
+        "title",
+        "description",
+        "incidentDateIso",
+        "incidentTime",
+        "attachmentType",
+        "attachmentName",
+        "attachmentUri",
+        "originalFileHash",
+        "verificationStatus",
+        "disputeResponse",
+        "version",
+        "auditHistorySummary",
+        "isArchived",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SharedExpense": {
+      "title": "SharedExpense",
+      "description": "Child-related shared expense with custom split percentage, receipt metadata, and payment status.",
+      "type": "object",
+      "properties": {
+        "createdByUid": { "type": "string", "description": "UID of parent logging the expense." },
+        "createdByName": { "type": "string", "description": "Name of parent logging the expense." },
+        "familyId": { "type": "string", "description": "Shared family workspace ID." },
+        "memberUids": { "type": "array", "description": "Bounded list (1-2) of authorized parent UIDs." },
+        "childName": { "type": "string", "description": "Child associated with expense." },
+        "category": {
+          "type": "string",
+          "enum": [
+            "SCHOOL_FEES",
+            "MEDICAL_BILLS",
+            "CHILDCARE",
+            "CLOTHING",
+            "FOOD",
+            "ACTIVITIES",
+            "TRANSPORTATION",
+            "OTHER"
+          ],
+          "description": "Expense category."
+        },
+        "title": { "type": "string", "description": "Merchant or expense description." },
+        "totalAmountCents": { "type": "integer", "description": "Total expense amount in cents/pence." },
+        "currency": {
+          "type": "string",
+          "enum": ["USD", "GBP"],
+          "description": "Currency code (US Dollars or UK Pounds)."
+        },
+        "creatorSharePercent": { "type": "integer", "description": "Creator's share percentage (0-100)." },
+        "coParentShareCents": { "type": "integer", "description": "Calculated co-parent reimbursement amount in cents/pence." },
+        "dateIso": { "type": "string", "description": "Expense date (YYYY-MM-DD)." },
+        "receiptName": { "type": "string", "description": "Uploaded receipt filename." },
+        "receiptUri": { "type": "string", "description": "Uploaded receipt URI." },
+        "paymentStatus": {
+          "type": "string",
+          "enum": ["UNPAID_REQUESTED", "PAID", "DISPUTED"],
+          "description": "Reimbursement status."
+        },
+        "statusNote": { "type": "string", "description": "Payment reference or dispute note." },
+        "paidAtIso": { "type": "string", "description": "Date marked paid." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." }
+      },
+      "required": [
+        "createdByUid",
+        "createdByName",
+        "familyId",
+        "memberUids",
+        "childName",
+        "category",
+        "title",
+        "totalAmountCents",
+        "currency",
+        "creatorSharePercent",
+        "coParentShareCents",
+        "dateIso",
+        "receiptName",
+        "receiptUri",
+        "paymentStatus",
+        "statusNote",
+        "paidAtIso",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CoParentMessage": {
+      "title": "CoParentMessage",
+      "description": "Tamper-evident co-parent message with read receipts, attachments, and edit/retraction audit trail.",
+      "type": "object",
+      "properties": {
+        "senderUid": { "type": "string", "description": "UID of message sender." },
+        "senderName": { "type": "string", "description": "Display name of message sender." },
+        "familyId": { "type": "string", "description": "Shared family workspace ID." },
+        "memberUids": { "type": "array", "description": "Bounded list (1-2) of authorized parent UIDs." },
+        "body": { "type": "string", "description": "Current message text." },
+        "originalBody": { "type": "string", "description": "Immutable original message text at creation." },
+        "attachmentName": { "type": "string", "description": "Shared attachment name." },
+        "attachmentUri": { "type": "string", "description": "Shared attachment URI." },
+        "isEdited": { "type": "boolean", "description": "True if message was edited after sending." },
+        "isRetracted": { "type": "boolean", "description": "True if message was retracted (audit record remains)." },
+        "auditNote": { "type": "string", "description": "Timestamped edit/retraction log." },
+        "readByUids": { "type": "array", "description": "Bounded list (1-2) of UIDs who have read the message." },
+        "toneAssisted": { "type": "boolean", "description": "Whether the calm tone assistant was used." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()." }
+      },
+      "required": [
+        "senderUid",
+        "senderName",
+        "familyId",
+        "memberUids",
+        "body",
+        "originalBody",
+        "attachmentName",
+        "attachmentUri",
+        "isEdited",
+        "isRetracted",
+        "auditNote",
+        "readByUids",
+        "toneAssisted",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private parent account settings and subscription entitlements."
+    },
+    "/invitations/{inviteCode}": {
+      "schema": { "$ref": "#/entities/CoParentInvitation" },
+      "description": "Co-parent workspace invitation tokens."
+    },
+    "/children/{childId}": {
+      "schema": { "$ref": "#/entities/ChildProfile" },
+      "description": "Shared child profiles scoped by memberUids."
+    },
+    "/schedule_events/{eventId}": {
+      "schema": { "$ref": "#/entities/CustodyScheduleEvent" },
+      "description": "Shared custody calendar events and schedule change requests."
+    },
+    "/exchanges/{exchangeId}": {
+      "schema": { "$ref": "#/entities/CustodyExchangeRecord" },
+      "description": "Shared custody exchange tracking records."
+    },
+    "/incidents/{incidentId}": {
+      "schema": { "$ref": "#/entities/IncidentRecord" },
+      "description": "Shared evidence and incident journal records."
+    },
+    "/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/SharedExpense" },
+      "description": "Shared child-related expenses and payment requests."
+    },
+    "/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/CoParentMessage" },
+      "description": "Secure co-parent messages with audit history and read receipts."
+    }
+  }
+}
