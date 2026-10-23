@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CustodyLog — Delete Account &amp; Personal Data</title>
+  <style>
+    :root { --navy: #0B1D3A; --teal: #0D9488; --bg: #F7FAFC; --card: #FFFFFF; --text: #0F172A; --crimson: #B91C1C; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; line-height: 1.65; }
+    header { background: var(--navy); color: #fff; padding: 28px 20px; text-align: center; }
+    header h1 { margin: 0 0 6px 0; font-size: 26px; }
+    header p { margin: 0; color: #FECACA; font-size: 14px; }
+    main { max-width: 820px; margin: 24px auto; padding: 0 20px 48px; }
+    .card { background: var(--card); border-radius: 16px; padding: 28px; box-shadow: 0 2px 10px rgba(11,29,58,0.06); border: 1px solid #CBD5E1; margin-bottom: 20px; }
+    h2 { color: var(--navy); margin-top: 20px; border-bottom: 1px solid #E2E8F0; padding-bottom: 6px; }
+    nav a { color: var(--teal); font-weight: 600; margin-right: 16px; text-decoration: none; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+    th, td { border: 1px solid #CBD5E1; padding: 10px; text-align: left; }
+    th { background: #F1F5F9; }
+    input, textarea { width: 100%; padding: 10px; border: 1px solid #94A3B8; border-radius: 8px; margin-top: 6px; margin-bottom: 12px; box-sizing: border-box; }
+    .btn-danger { display: inline-block; background: var(--crimson); color: #fff; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: 600; border: none; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CustodyLog — Delete Account &amp; Personal Data</h1>
+    <p>Official Account &amp; Data Deletion Portal (com.aistudio.custodylog.vqrkmp)</p>
+  </header>
+  <main>
+    <div class="card">
+      <nav>
+        <a href="./privacy-policy.html">Privacy Policy</a>
+        <a href="./terms-of-service.html">Terms of Service</a>
+      </nav>
+
+      <h2>Option 1: Instant In-App Account &amp; Data Deletion</h2>
+      <ol>
+        <li>Open the <strong>CustodyLog</strong> Android app.</li>
+        <li>Tap the <strong>Settings (Gear Icon)</strong> in the top bar (or tap <strong>Delete Account &amp; Data</strong> on the Login or Home screen).</li>
+        <li>Tap <strong>Delete Account &amp; Personal Data</strong>.</li>
+        <li>Check the confirmation box and tap <strong>Permanently Delete Account &amp; Data Now</strong>.</li>
+      </ol>
+
+      <h2>Option 2: Web Request to Delete Account &amp; Data (No App Login Required)</h2>
+      <p>If you have uninstalled the app or prefer to submit a deletion request on the web, enter your account email below to generate and send a verified deletion request:</p>
+      <form onsubmit="submitDeletion(event)">
+        <label for="email"><strong>Google Account Email Address used in CustodyLog:</strong></label>
+        <input id="email" type="email" required placeholder="your.email@gmail.com" />
+        <label for="scope"><strong>Deletion Scope:</strong></label>
+        <textarea id="scope" rows="3">Please permanently delete my CustodyLog account (users/{uid}), Firebase Authentication record, sent invitations, child profiles, and schedule events.</textarea>
+        <button type="submit" class="btn-danger">Submit Account &amp; Data Deletion Request</button>
+      </form>
+      <p id="statusMsg" style="color: #0D9488; font-weight: 600; display: none;"></p>
+
+      <h2>What Data Is Deleted vs. Retained</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Data Type</th>
+            <th>Action on Deletion</th>
+            <th>Retention Period</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>User Profile (<code>users/{uid}</code>), Name, Email &amp; Preferences</td>
+            <td>Permanently Deleted</td>
+            <td>Deleted immediately (0 days)</td>
+          </tr>
+          <tr>
+            <td>Firebase Authentication Credentials</td>
+            <td>Permanently Deleted</td>
+            <td>Deleted immediately (0 days)</td>
+          </tr>
+          <tr>
+            <td>Co-Parent Invitations, Child Profiles &amp; Schedule Events created by you</td>
+            <td>Permanently Deleted</td>
+            <td>Deleted immediately (0 days)</td>
+          </tr>
+          <tr>
+            <td>Shared Co-Parent Audit Logs (if linked with a second co-parent)</td>
+            <td>Your account &amp; login are removed; shared audit entries remain accessible only to the connected co-parent to preserve evidentiary integrity</td>
+            <td>Until both connected co-parents delete the shared workspace</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+  <script>
+    function submitDeletion(e) {
+      e.preventDefault();
+      var email = document.getElementById('email').value;
+      var scope = document.getElementById('scope').value;
+      var subject = encodeURIComponent('CustodyLog Account and Data Deletion Request');
+      var body = encodeURIComponent('Account Email: ' + email + '\n\n' + scope);
+      document.getElementById('statusMsg').style.display = 'block';
+      document.getElementById('statusMsg').innerText = 'Opening your email client to send the deletion request to privacy@custodylog.app...';
+      window.location.href = 'mailto:privacy@custodylog.app?subject=' + subject + '&body=' + body;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CustodyLog — Privacy Policy</title>
+  <style>
+    :root { --navy: #0B1D3A; --teal: #0D9488; --bg: #F7FAFC; --card: #FFFFFF; --text: #0F172A; --muted: #475569; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; line-height: 1.65; }
+    header { background: var(--navy); color: #fff; padding: 28px 20px; text-align: center; }
+    header h1 { margin: 0 0 6px 0; font-size: 26px; }
+    header p { margin: 0; color: #99F6E4; font-size: 14px; }
+    main { max-width: 820px; margin: 24px auto; padding: 0 20px 48px; }
+    .card { background: var(--card); border-radius: 16px; padding: 28px; box-shadow: 0 2px 10px rgba(11,29,58,0.06); border: 1px solid #CBD5E1; }
+    h2 { color: var(--navy); margin-top: 24px; border-bottom: 1px solid #E2E8F0; padding-bottom: 6px; }
+    nav a { color: var(--teal); font-weight: 600; margin-right: 16px; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CustodyLog — Privacy Policy</h1>
+    <p>Effective Date: October 22, 2026 • US (CCPA/CPRA) &amp; UK GDPR Compliant</p>
+  </header>
+  <main>
+    <div class="card">
+      <nav>
+        <a href="./terms-of-service.html">Terms of Service</a>
+        <a href="./delete-account.html">Delete Account &amp; Data</a>
+      </nav>
+
+      <h2>1. Overview &amp; Zero-Trust Architecture</h2>
+      <p><strong>CustodyLog</strong> (<code>com.aistudio.custodylog.vqrkmp</code>) is a co-parenting and child custody management application for parents in the United States and United Kingdom. Each parent signs in with a separate account via Google Sign-In. Private preferences are isolated strictly to your User ID (<code>UID</code>), and shared family records are accessible only to the two parent accounts linked via an explicit invitation token (<code>CL-XXXXXXXX</code>).</p>
+
+      <h2>2. Information We Collect</h2>
+      <ul>
+        <li><strong>Account Identity:</strong> Google Sign-In UID, display name, and email address used exclusively for authentication and workspace security.</li>
+        <li><strong>Co-Parenting &amp; Custody Records:</strong> Child profile names/DOBs, parenting schedules (2-2-3, 2-2-5-5, Alternating Weekends, Custom), timestamped exchange check-ins, incident descriptions, shared expenses, and co-parent chat messages.</li>
+        <li><strong>Attachments &amp; File Hashes:</strong> Photos and PDF documents selected via the zero-permission Android Photo Picker or system document picker, along with on-device SHA-256 hashes.</li>
+        <li><strong>Optional AI Calm Tone Assistant:</strong> When you explicitly tap <em>"Rewrite in Calm, Child-Focused Tone"</em>, your draft message text is transmitted over HTTPS to generate a neutral BIFF suggestion. Suggestions are never auto-sent.</li>
+      </ul>
+
+      <h2>3. Data Security &amp; Sharing</h2>
+      <p>All data is encrypted in transit (HTTPS/TLS) and at rest in Google Cloud / Firebase Firestore. We never sell personal or family data to third parties or advertisers. Subscription payments are handled directly by Google Play Billing.</p>
+
+      <h2>4. Data Portability &amp; Account Deletion</h2>
+      <p>You can export your records to PDF or CSV at any time in the app, and you can permanently delete your account and personal data either directly inside the app (<strong>Settings → Delete Account &amp; Personal Data</strong>) or via our <a href="./delete-account.html">Account &amp; Data Deletion Page</a>.</p>
+
+      <h2>5. Contact</h2>
+      <p>Email: <a href="mailto:privacy@custodylog.app">privacy@custodylog.app</a></p>
+    </div>
+  </main>
+</body>
+</html>

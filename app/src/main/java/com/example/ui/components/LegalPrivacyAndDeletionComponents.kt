@@ -38,6 +38,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -69,10 +70,25 @@ enum class LegalDocumentTab(val title: String) {
 }
 
 object CustodyLegalLinks {
-    const val PRIVACY_POLICY_URL = "https://custodylog.app/privacy-policy"
-    const val TERMS_OF_SERVICE_URL = "https://custodylog.app/terms-of-service"
-    const val DELETE_ACCOUNT_WEB_URL = "https://custodylog.app/account/delete-data"
+    const val DEFAULT_GITHUB_USER = "gadgetexplorerpro"
+    const val DEFAULT_GITHUB_REPO = "custodylog"
+
+    const val PRIVACY_POLICY_URL = "https://gadgetexplorerpro.github.io/custodylog/privacy-policy.html"
+    const val TERMS_OF_SERVICE_URL = "https://gadgetexplorerpro.github.io/custodylog/terms-of-service.html"
+    const val DELETE_ACCOUNT_WEB_URL = "https://gadgetexplorerpro.github.io/custodylog/delete-account.html"
     const val PRIVACY_SUPPORT_EMAIL = "privacy@custodylog.app"
+
+    fun githubPagesUrl(user: String, repo: String, file: String): String {
+        val cleanUser = user.trim().ifBlank { DEFAULT_GITHUB_USER }
+        val cleanRepo = repo.trim().ifBlank { DEFAULT_GITHUB_REPO }
+        return "https://$cleanUser.github.io/$cleanRepo/$file"
+    }
+
+    fun githubBlobUrl(user: String, repo: String, file: String): String {
+        val cleanUser = user.trim().ifBlank { DEFAULT_GITHUB_USER }
+        val cleanRepo = repo.trim().ifBlank { DEFAULT_GITHUB_REPO }
+        return "https://github.com/$cleanUser/$cleanRepo/blob/main/$file"
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -204,6 +220,15 @@ fun LegalAndDataSafetyDialog(
     var selectedTab by remember(initialTab) { mutableStateOf(initialTab) }
     var confirmPermanentDeletionCheckbox by remember { mutableStateOf(false) }
     var copiedNotice by remember { mutableStateOf<String?>(null) }
+    var githubUser by remember { mutableStateOf(CustodyLegalLinks.DEFAULT_GITHUB_USER) }
+    var githubRepo by remember { mutableStateOf(CustodyLegalLinks.DEFAULT_GITHUB_REPO) }
+
+    val privacyPagesUrl = CustodyLegalLinks.githubPagesUrl(githubUser, githubRepo, "privacy-policy.html")
+    val privacyRepoUrl = CustodyLegalLinks.githubBlobUrl(githubUser, githubRepo, "PRIVACY_POLICY.md")
+    val termsPagesUrl = CustodyLegalLinks.githubPagesUrl(githubUser, githubRepo, "terms-of-service.html")
+    val termsRepoUrl = CustodyLegalLinks.githubBlobUrl(githubUser, githubRepo, "TERMS_OF_SERVICE.md")
+    val deletePagesUrl = CustodyLegalLinks.githubPagesUrl(githubUser, githubRepo, "delete-account.html")
+    val deleteRepoUrl = CustodyLegalLinks.githubBlobUrl(githubUser, githubRepo, "DELETE_ACCOUNT.md")
 
     fun openExternalUrl(url: String) {
         runCatching {
@@ -275,7 +300,7 @@ fun LegalAndDataSafetyDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 430.dp)
+                    .heightIn(max = 450.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -291,6 +316,39 @@ fun LegalAndDataSafetyDialog(
                             color = TealSecondary,
                             modifier = Modifier.padding(10.dp)
                         )
+                    }
+                }
+
+                // GitHub Username & Repo Configurator for Play Console URLs
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "GitHub Pages / Repo URL Builder (for Play Console)",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = githubUser,
+                                onValueChange = { githubUser = it },
+                                label = { Text("GitHub Username") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = githubRepo,
+                                onValueChange = { githubRepo = it },
+                                label = { Text("Repo Name") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
 
@@ -327,12 +385,21 @@ fun LegalAndDataSafetyDialog(
                         )
                         HorizontalDivider()
                         ExternalLinkRow(
-                            label = "Official Privacy Policy Link",
-                            url = CustodyLegalLinks.PRIVACY_POLICY_URL,
-                            onOpen = { openExternalUrl(CustodyLegalLinks.PRIVACY_POLICY_URL) },
+                            label = "GitHub Pages Privacy Policy URL",
+                            url = privacyPagesUrl,
+                            onOpen = { openExternalUrl(privacyPagesUrl) },
                             onCopy = {
-                                clipboard.setText(AnnotatedString(CustodyLegalLinks.PRIVACY_POLICY_URL))
-                                copiedNotice = "Copied Privacy Policy URL to clipboard."
+                                clipboard.setText(AnnotatedString(privacyPagesUrl))
+                                copiedNotice = "Copied GitHub Pages Privacy Policy URL!"
+                            }
+                        )
+                        ExternalLinkRow(
+                            label = "Direct GitHub Repo Privacy Policy URL",
+                            url = privacyRepoUrl,
+                            onOpen = { openExternalUrl(privacyRepoUrl) },
+                            onCopy = {
+                                clipboard.setText(AnnotatedString(privacyRepoUrl))
+                                copiedNotice = "Copied GitHub Repo PRIVACY_POLICY.md URL!"
                             }
                         )
                     }
@@ -367,12 +434,21 @@ fun LegalAndDataSafetyDialog(
                         )
                         HorizontalDivider()
                         ExternalLinkRow(
-                            label = "Official Terms of Service Link",
-                            url = CustodyLegalLinks.TERMS_OF_SERVICE_URL,
-                            onOpen = { openExternalUrl(CustodyLegalLinks.TERMS_OF_SERVICE_URL) },
+                            label = "GitHub Pages Terms of Service URL",
+                            url = termsPagesUrl,
+                            onOpen = { openExternalUrl(termsPagesUrl) },
                             onCopy = {
-                                clipboard.setText(AnnotatedString(CustodyLegalLinks.TERMS_OF_SERVICE_URL))
-                                copiedNotice = "Copied Terms of Service URL to clipboard."
+                                clipboard.setText(AnnotatedString(termsPagesUrl))
+                                copiedNotice = "Copied GitHub Pages Terms of Service URL!"
+                            }
+                        )
+                        ExternalLinkRow(
+                            label = "Direct GitHub Repo Terms of Service URL",
+                            url = termsRepoUrl,
+                            onOpen = { openExternalUrl(termsRepoUrl) },
+                            onCopy = {
+                                clipboard.setText(AnnotatedString(termsRepoUrl))
+                                copiedNotice = "Copied GitHub Repo TERMS_OF_SERVICE.md URL!"
                             }
                         )
                     }
@@ -420,12 +496,21 @@ fun LegalAndDataSafetyDialog(
                             fontWeight = FontWeight.Bold
                         )
                         ExternalLinkRow(
-                            label = "Account & Data Deletion Portal",
-                            url = CustodyLegalLinks.DELETE_ACCOUNT_WEB_URL,
-                            onOpen = { openExternalUrl(CustodyLegalLinks.DELETE_ACCOUNT_WEB_URL) },
+                            label = "GitHub Pages Account & Data Deletion URL",
+                            url = deletePagesUrl,
+                            onOpen = { openExternalUrl(deletePagesUrl) },
                             onCopy = {
-                                clipboard.setText(AnnotatedString(CustodyLegalLinks.DELETE_ACCOUNT_WEB_URL))
-                                copiedNotice = "Copied Account & Data Deletion URL to clipboard."
+                                clipboard.setText(AnnotatedString(deletePagesUrl))
+                                copiedNotice = "Copied GitHub Pages Account & Data Deletion URL!"
+                            }
+                        )
+                        ExternalLinkRow(
+                            label = "Direct GitHub Repo Account Deletion URL",
+                            url = deleteRepoUrl,
+                            onOpen = { openExternalUrl(deleteRepoUrl) },
+                            onCopy = {
+                                clipboard.setText(AnnotatedString(deleteRepoUrl))
+                                copiedNotice = "Copied GitHub Repo DELETE_ACCOUNT.md URL!"
                             }
                         )
 
